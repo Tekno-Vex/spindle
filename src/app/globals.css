@@ -90,4 +90,9 @@ body {
   .desktop-grid {
     grid-template-columns: 1fr !important;
   }
+
+  .desktop-grid > div:first-child {
+    position: static !important;
+    max-height: none !important;
+  }
 }

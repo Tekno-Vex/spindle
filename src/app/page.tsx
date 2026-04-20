@@ -204,7 +204,7 @@ export default function Home() {
 
   return (
     <main style={{ minHeight:'100vh', background:'var(--bg)' }}>
-      <div style={{ maxWidth:'1400px', margin:'0 auto', padding:'0 48px 40px' }}>
+      <div style={{ maxWidth:'1400px', margin:'0 auto', padding:'0 clamp(16px, 4vw, 48px) 40px' }}>
 
         <Masthead totalAlbums={allAlbums.length} rolledCount={rolled}/>
 
