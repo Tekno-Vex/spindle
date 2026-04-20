@@ -96,3 +96,12 @@ body {
     max-height: none !important;
   }
 }
+
+@media (max-width: 640px) {
+  .modal-hero {
+    grid-template-columns: 1fr !important;
+  }
+  .modal-hero > div:first-child {
+    max-height: 260px;
+  }
+}

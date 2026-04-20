@@ -7,6 +7,7 @@ import AlbumCard     from '@/components/AlbumCard';
 import RollButton    from '@/components/RollButton';
 import SlotAnimation from '@/components/SlotAnimation';
 import YearTimeline  from '@/components/YearTimeline';
+import AlbumModal    from '@/components/AlbumModal';
 
 const allAlbums = albumsData as Album[];
 const yearCounts: Record<number,number> = {};
@@ -104,7 +105,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Pop & Art Pop',
+    label: 'Pop',
     color: '#60a5fa',
     genres: [
       'Art Pop','Progressive Pop','Pop Rock','Baroque Pop','Psychedelic Pop',
@@ -142,6 +143,7 @@ export default function Home() {
   const [rolled,      setRolled]     = useState(0);
   const [cardKey,     setCardKey]    = useState(0);
   const [openFamily,  setOpenFamily] = useState<string|null>(null);
+  const [modalAlbum,  setModalAlbum] = useState<Album|null>(null);
 
   const pool = useMemo(() => {
     let result = allAlbums;
@@ -178,6 +180,8 @@ export default function Home() {
         setHistIdx(next.length-1);
         return next;
       });
+      // Update URL for shareability
+      window.history.replaceState({}, '', `/?album=${picked.rym_rank}`);
     }, 1500);
   }, [isRolling, pool, histIdx]);
 
@@ -189,6 +193,7 @@ export default function Home() {
     if (histIdx < history.length-1) { const i=histIdx+1; setHistIdx(i); setCurrent(history[i]); setCardKey(k=>k+1); }
   }, [histIdx, history]);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
@@ -199,6 +204,30 @@ export default function Home() {
     window.addEventListener('keydown', fn);
     return () => window.removeEventListener('keydown', fn);
   }, [roll, goBack, goFwd]);
+
+  // Handle similar album clicks from inside the modal
+  useEffect(() => {
+    const fn = (e: Event) => {
+      const album = (e as CustomEvent).detail as Album;
+      setModalAlbum(album);
+    };
+    window.addEventListener('spindle:openAlbum', fn);
+    return () => window.removeEventListener('spindle:openAlbum', fn);
+  }, []);
+
+  // Load album from URL on first visit e.g. /?album=42
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rankStr = params.get('album');
+    if (rankStr) {
+      const rank = parseInt(rankStr);
+      const found = allAlbums.find(a => a.rym_rank === rank);
+      if (found) {
+        setCurrent(found);
+        setModalAlbum(found);
+      }
+    }
+  }, []);
 
   const hasFilters = selYear !== null || selGenres.size > 0;
 
@@ -367,7 +396,13 @@ export default function Home() {
             <SlotAnimation isRolling={isRolling} albumTitles={allTitles}/>
 
             {current && !isRolling && (
-              <div key={cardKey}><AlbumCard album={current} isNew/></div>
+              <div
+                key={cardKey}
+                onClick={() => setModalAlbum(current)}
+                style={{ cursor:'pointer' }}
+              >
+                <AlbumCard album={current} isNew/>
+              </div>
             )}
 
             {!current && !isRolling && (
@@ -398,6 +433,19 @@ export default function Home() {
         </footer>
 
       </div>
+
+      {/* Album detail modal */}
+      {modalAlbum && (
+        <AlbumModal
+          album={modalAlbum}
+          allAlbums={allAlbums}
+          onClose={() => {
+            setModalAlbum(null);
+            window.history.replaceState({}, '', '/');
+          }}
+        />
+      )}
+
     </main>
   );
 }
