@@ -89,7 +89,7 @@ export default function AlbumCard({ album, isNew=false }: { album: Album; isNew?
 
           {/* Pills */}
           <div style={{ display:'flex', gap:'8px', marginBottom:'20px', flexWrap:'wrap' }}>
-            <span className="pill" style={{ fontSize:'12px' }}>{album.year}</span>
+            <span className="pill" style={{ fontSize:'13px' }}>{album.release_date || album.year}</span>
             <span className="pill" style={{ fontSize:'12px', textTransform:'capitalize' }}>{album.release_type}</span>
           </div>
 
@@ -160,21 +160,16 @@ export default function AlbumCard({ album, isNew=false }: { album: Album; isNew?
 
           {/* Links row */}
           <div style={{ display:'flex', gap:'16px', alignItems:'center', flexWrap:'wrap' }}>
-            {spotifyUrl && (
-              <a href={spotifyUrl} target="_blank" rel="noopener noreferrer"
-                style={{
-                  fontFamily:'var(--font-mono)', fontSize:'12px',
-                  padding:'8px 20px', borderRadius:'99px',
-                  background:'#1DB954', color:'white',
-                  textDecoration:'none', letterSpacing:'.04em',
-                  transition:'opacity .15s',
-                }}
-                onMouseEnter={e=>(e.currentTarget.style.opacity='.8')}
-                onMouseLeave={e=>(e.currentTarget.style.opacity='1')}
-              >
-                ▶ Open in Spotify
-              </a>
-            )}
+            {/* Click hint */}
+            <div style={{
+              marginTop:'20px',
+              display:'flex', alignItems:'center', gap:'6px',
+              fontFamily:'var(--font-mono)', fontSize:'11px',
+              color:'var(--text-muted)', opacity:.6,
+            }}>
+              <span>Click to explore tracklist, streaming links & more</span>
+              <span>→</span>
+            </div>
             {album.rym_url && (
               <a href={album.rym_url} target="_blank" rel="noopener noreferrer"
                 style={{
@@ -188,6 +183,16 @@ export default function AlbumCard({ album, isNew=false }: { album: Album; isNew?
                 View on RateYourMusic →
               </a>
             )}
+          </div>
+
+          {/* Click hint */}
+          <div style={{
+            marginTop:'16px',
+            fontFamily:'var(--font-mono)', fontSize:'10px',
+            color:'var(--text-muted)', opacity:.5,
+            letterSpacing:'.06em',
+          }}>
+            Click card to explore →
           </div>
         </div>
       </div>

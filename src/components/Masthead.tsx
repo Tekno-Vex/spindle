@@ -51,7 +51,7 @@ export default function Masthead({ totalAlbums, rolledCount }: { totalAlbums: nu
             color:'var(--text-muted)',
             marginTop:'10px',
           }}>
-            {totalAlbums.toLocaleString()} Albums &nbsp;·&nbsp; 1954–2026
+            {totalAlbums.toLocaleString()} Albums &nbsp;·&nbsp; 1951–2026
           </p>
         </div>
 
