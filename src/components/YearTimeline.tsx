@@ -19,123 +19,98 @@ const DECADES = [
 ];
 
 export default function YearTimeline({ selectedYear, onYearSelect, yearCounts }: Props) {
-  const [openDecade, setOpenDecade] = useState<string | null>(null);
-
-  const toggleDecade = (label: string) => {
-    setOpenDecade(prev => prev === label ? null : label);
-  };
-
-  const totalInDecade = (years: number[]) =>
-    years.reduce((s, y) => s + (yearCounts[y] || 0), 0);
+  const [openDecade, setOpenDecade] = useState<string|null>(null);
+  const total = (years: number[]) => years.reduce((s,y) => s+(yearCounts[y]||0), 0);
 
   return (
-    <div className="card-surface" style={{ padding:'28px 28px 24px', marginBottom:'32px' }}>
-
-      {/* Header row */}
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'20px' }}>
-        <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', letterSpacing:'.18em', textTransform:'uppercase', color:'var(--text-muted)' }}>
+    <div style={{
+      background:'var(--bg-card)',
+      border:'1px solid var(--border-mid)',
+      borderRadius:'20px',
+      padding:'16px',
+      marginBottom:'16px',
+    }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'12px' }}>
+        <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', letterSpacing:'.18em', textTransform:'uppercase', color:'var(--text-muted)' }}>
           Filter by era
         </span>
         {selectedYear && (
-          <button
-            onClick={() => { onYearSelect(null); setOpenDecade(null); }}
-            style={{
-              fontFamily:'var(--font-mono)', fontSize:'10px',
-              color:'var(--accent-hi)', background:'none', border:'none',
-              cursor:'pointer', letterSpacing:'.06em',
-            }}
-          >
+          <button onClick={() => { onYearSelect(null); setOpenDecade(null); }}
+            style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-hi)', background:'none', border:'none', cursor:'pointer' }}>
             Clear {selectedYear} ×
           </button>
         )}
       </div>
 
-      {/* Decade rows */}
-      <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:'6px', marginBottom: openDecade ? '12px' : '0' }}>
         {DECADES.map(({ label, years }) => {
-          const isOpen   = openDecade === label;
+          const isOpen    = openDecade === label;
           const hasActive = selectedYear !== null && years.includes(selectedYear);
-          const count    = totalInDecade(years);
-
+          const count     = total(years);
           return (
-            <div key={label}>
-              {/* Decade header button */}
-              <button
-                onClick={() => toggleDecade(label)}
-                style={{
-                  display:'flex', alignItems:'center', gap:'10px',
-                  background:'none', border:'none', cursor:'pointer',
-                  padding:'4px 0', width:'100%', textAlign:'left',
-                }}
-              >
-                <span style={{
-                  fontFamily:'var(--font-mono)',
-                  fontSize:'11px',
-                  letterSpacing:'.12em',
-                  color: hasActive ? 'var(--accent-hi)' : isOpen ? 'var(--text)' : 'var(--text-sub)',
-                  transition:'color .15s',
-                  minWidth:'52px',
-                }}>
-                  {label}
-                </span>
-                <div style={{
-                  flex:1, height:'1px',
-                  background: hasActive
-                    ? 'linear-gradient(to right, var(--accent), transparent)'
-                    : 'linear-gradient(to right, var(--border-mid), transparent)',
-                }}/>
-                <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)' }}>
-                  {count}
-                </span>
-                <span style={{
-                  fontFamily:'var(--font-mono)', fontSize:'10px',
-                  color:'var(--text-muted)',
-                  transform: isOpen ? 'rotate(180deg)' : 'none',
-                  transition:'transform .2s',
-                  display:'inline-block',
-                }}>▾</span>
-              </button>
-
-              {/* Year pills — shown when decade is open */}
-              {isOpen && (
-                <div className="anim-up" style={{ display:'flex', flexWrap:'wrap', gap:'6px', marginTop:'10px', paddingLeft:'62px' }}>
-                  {years.map(year => {
-                    const cnt       = yearCounts[year] || 0;
-                    const isSelected = selectedYear === year;
-                    return (
-                      <button
-                        key={year}
-                        onClick={() => onYearSelect(isSelected ? null : year)}
-                        className={`pill ${isSelected ? 'active' : ''}`}
-                        style={{ opacity: cnt === 0 ? 0.3 : 1 }}
-                        title={`${year} — ${cnt} albums`}
-                      >
-                        {year}
-                        {cnt > 0 && (
-                          <span style={{ marginLeft:'5px', opacity:.55, fontSize:'9px' }}>{cnt}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <button
+              key={label}
+              onClick={() => setOpenDecade(isOpen ? null : label)}
+              style={{
+                fontFamily:'var(--font-mono)',
+                fontSize:'11px',
+                letterSpacing:'.06em',
+                padding:'8px 12px',
+                borderRadius:'10px',
+                border:`1px solid ${hasActive ? 'var(--accent)' : isOpen ? 'var(--border-hi)' : 'var(--border-mid)'}`,
+                background: hasActive ? 'rgba(168,85,247,.12)' : isOpen ? 'var(--bg-surface)' : 'transparent',
+                color: hasActive ? 'var(--accent-hi)' : isOpen ? 'var(--text)' : 'var(--text-sub)',
+                cursor:'pointer',
+                transition:'all .15s',
+                display:'flex',
+                justifyContent:'space-between',
+                alignItems:'center',
+              }}
+            >
+              <span>{label}</span>
+              <span style={{ opacity:.5, fontSize:'10px' }}>{count}</span>
+            </button>
           );
         })}
       </div>
 
-      {/* Active filter summary */}
+      {openDecade && (() => {
+        const decade = DECADES.find(d => d.label === openDecade);
+        if (!decade) return null;
+        return (
+          <div className="anim-up" style={{
+            borderTop:'1px solid var(--border)',
+            paddingTop:'12px',
+            display:'flex', flexWrap:'wrap', gap:'6px',
+          }}>
+            {decade.years.map(year => {
+              const cnt = yearCounts[year] || 0;
+              const isSelected = selectedYear === year;
+              return (
+                <button
+                  key={year}
+                  onClick={() => onYearSelect(isSelected ? null : year)}
+                  className={`pill ${isSelected ? 'active' : ''}`}
+                  style={{ opacity: cnt === 0 ? 0.3 : 1, fontSize:'12px', padding:'5px 14px' }}
+                  title={`${year} — ${cnt} albums`}
+                >
+                  {year}
+                  <span style={{ marginLeft:'5px', opacity:.5, fontSize:'9px' }}>{cnt}</span>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {selectedYear && (
         <div className="anim-up" style={{
-          marginTop:'20px',
-          paddingTop:'16px',
+          marginTop:'12px', paddingTop:'10px',
           borderTop:'1px solid var(--border)',
-          fontFamily:'var(--font-mono)',
-          fontSize:'11px',
-          color:'var(--accent-hi)',
-          letterSpacing:'.06em',
+          fontFamily:'var(--font-mono)', fontSize:'11px',
+          color:'var(--accent-hi)', letterSpacing:'.06em',
         }}>
-          ✦ Showing {yearCounts[selectedYear] || 0} albums from {selectedYear}
+          ✦ {selectedYear} · {yearCounts[selectedYear]||0} albums in pool
         </div>
       )}
     </div>

@@ -41,3 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 rym-data/
+enrich-spotify.js
+rym-raw-combined.json
+combine-data.js
+transform-data.js
+albums-enriched-backup.json
+albums.json

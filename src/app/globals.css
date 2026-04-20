@@ -4,26 +4,23 @@
 
 :root {
   --bg:            #07070f;
-  --bg-card:       #0d0d1c;
-  --bg-surface:    #12122a;
-  --border:        #1c1c38;
-  --border-mid:    #28284a;
-  --border-hi:     #38386a;
-  --text:          #eeeaf8;
-  --text-sub:      #9994b8;
-  --text-muted:    #4a4870;
-  --accent:        #9b5de5;
-  --accent-hi:     #c77dff;
-  --accent-pink:   #f72585;
-  --accent-cyan:   #00b4d8;
-  --gold:          #f4a261;
-  --green:         #06d6a0;
+  --bg-card:       #0e0e1a;
+  --bg-surface:    #141428;
+  --border:        #1e1e38;
+  --border-mid:    #2a2a48;
+  --border-hi:     #3d3d65;
+  --text:          #f2f0ff;
+  --text-sub:      #b8b4d8;
+  --text-muted:    #6b678a;
+  --accent:        #a855f7;
+  --accent-hi:     #d09ef8;
+  --accent-pink:   #f472b6;
+  --accent-cyan:   #22d3ee;
+  --gold:          #fbbf24;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; }
-
 body {
   background: var(--bg);
   color: var(--text);
@@ -35,47 +32,39 @@ body {
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 99px; }
+::selection { background: rgba(168,85,247,.25); color: var(--accent-hi); }
 
-::selection { background: rgba(155,93,229,0.25); color: var(--accent-hi); }
-
-/* ── Animations ─────────────────────── */
 @keyframes cardIn {
-  0%   { opacity:0; transform: translateY(20px) scale(0.98); }
-  100% { opacity:1; transform: translateY(0)    scale(1);    }
+  0%   { opacity:0; transform:translateY(24px) scale(.97); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
 }
 @keyframes fadeUp {
-  from { opacity:0; transform:translateY(12px); }
-  to   { opacity:1; transform:translateY(0);    }
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
 }
 @keyframes shimmer {
-  0%   { background-position: -300% center; }
-  100% { background-position:  300% center; }
+  0%   { background-position:-300% center; }
+  100% { background-position: 300% center; }
 }
 @keyframes orbFloat {
-  0%,100% { transform: translate(-50%,-50%) scale(1);   opacity:.35; }
-  50%      { transform: translate(-50%,-50%) scale(1.1); opacity:.55; }
+  0%,100% { transform:translate(-50%,-50%) scale(1);   opacity:.3; }
+  50%      { transform:translate(-50%,-50%) scale(1.15); opacity:.5; }
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin { to { transform:rotate(360deg); } }
 
-.anim-card  { animation: cardIn  .65s cubic-bezier(.16,1,.3,1) both; }
-.anim-up    { animation: fadeUp  .5s  cubic-bezier(.16,1,.3,1) both; }
-.anim-spin  { animation: spin    1s   linear infinite; }
+.anim-card { animation: cardIn  .7s cubic-bezier(.16,1,.3,1) both; }
+.anim-up   { animation: fadeUp  .5s cubic-bezier(.16,1,.3,1) both; }
+.anim-spin { animation: spin    1s  linear infinite; }
 
-/* ── Utilities ───────────────────────── */
 .shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--accent-hi) 0%,
-    #fff             25%,
-    var(--accent-hi) 50%,
-    var(--accent-pink) 75%,
-    var(--accent-hi) 100%
-  );
+  background: linear-gradient(90deg,
+    var(--accent-hi) 0%, #fff 20%, var(--accent-hi) 40%,
+    var(--accent-pink) 70%, var(--accent-hi) 100%);
   background-size: 300% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: shimmer 6s linear infinite;
+  animation: shimmer 5s linear infinite;
 }
 
 .pill {
@@ -84,7 +73,7 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: .06em;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 99px;
   border: 1px solid var(--border-mid);
   color: var(--text-sub);
@@ -93,12 +82,12 @@ body {
   cursor: pointer;
   white-space: nowrap;
 }
-.pill:hover          { border-color: var(--border-hi); color: var(--text); }
-.pill.active         { border-color: var(--accent); background: rgba(155,93,229,.12); color: var(--accent-hi); }
-.pill.active:hover   { border-color: var(--accent-hi); }
+.pill:hover        { border-color:var(--border-hi); color:var(--text); }
+.pill.active       { border-color:var(--accent); background:rgba(168,85,247,.1); color:var(--accent-hi); }
+.pill.active:hover { border-color:var(--accent-hi); }
 
-.card-surface {
-  background: var(--bg-card);
-  border: 1px solid var(--border-mid);
-  border-radius: 20px;
+@media (max-width: 768px) {
+  .desktop-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
