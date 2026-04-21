@@ -10,6 +10,10 @@ import AlbumModal      from '@/components/AlbumModal';
 import YearRangeFilter from '@/components/YearRangeFilter';
 import RatingFilter    from '@/components/RatingFilter';
 import SearchBar       from '@/components/SearchBar';
+import UserMenu        from '@/components/UserMenu';
+import StatsDashboard  from '@/components/StatsDashboard';
+import { useUser }     from '@/hooks/useUser';
+import { useUserData } from '@/hooks/useUserData';
 
 const allAlbums = albumsData as Album[];
 const allTitles = allAlbums.map(a => a.title);
@@ -125,7 +129,6 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
   },
 ];
 
-// Read initial filter state from URL
 function getInitialFilters() {
   if (typeof window === 'undefined') return {
     minYear: ABSOLUTE_MIN_YEAR, maxYear: ABSOLUTE_MAX_YEAR,
@@ -143,30 +146,33 @@ function getInitialFilters() {
 export default function Home() {
   const initial = useMemo(() => getInitialFilters(), []);
 
-  const [current,     setCurrent]    = useState<Album|null>(null);
-  const [isRolling,   setRolling]    = useState(false);
-  const [minYear,     setMinYear]    = useState(initial.minYear);
-  const [maxYear,     setMaxYear]    = useState(initial.maxYear);
-  const [selGenres,   setSelGenres]  = useState<Set<string>>(initial.genres);
-  const [minRating,   setMinRating]  = useState(initial.minRating);
-  const [history,     setHistory]    = useState<Album[]>([]);
-  const [histIdx,     setHistIdx]    = useState(-1);
-  const [rolled,      setRolled]     = useState(0);
-  const [cardKey,     setCardKey]    = useState(0);
-  const [openFamily,  setOpenFamily] = useState<string|null>(null);
-  const [modalAlbum,  setModalAlbum] = useState<Album|null>(null);
-  const [genreMode,   setGenreMode]  = useState<'any' | 'all'>('any');
+  const [current,       setCurrent]      = useState<Album|null>(null);
+  const [isRolling,     setRolling]      = useState(false);
+  const [minYear,       setMinYear]      = useState(initial.minYear);
+  const [maxYear,       setMaxYear]      = useState(initial.maxYear);
+  const [selGenres,     setSelGenres]    = useState<Set<string>>(initial.genres);
+  const [minRating,     setMinRating]    = useState(initial.minRating);
+  const [history,       setHistory]      = useState<Album[]>([]);
+  const [histIdx,       setHistIdx]      = useState(-1);
+  const [rolled,        setRolled]       = useState(0);
+  const [cardKey,       setCardKey]      = useState(0);
+  const [openFamily,    setOpenFamily]   = useState<string|null>(null);
+  const [modalAlbum,    setModalAlbum]   = useState<Album|null>(null);
+  const [genreMode,     setGenreMode]    = useState<'any'|'all'>('any');
+  const [showDashboard, setShowDashboard]= useState(false);
+  const [excludeHeard,  setExcludeHeard] = useState(true);
 
-  // Build filtered pool
+  const { user, loading: userLoading } = useUser();
+  const {
+    heard, favorites, heardList, favoritesList, rollHistory,
+    markHeard, toggleFavorite, addToHistory,
+  } = useUserData(user);
+
   const pool = useMemo(() => {
     let result = allAlbums;
-
-    // Year range
     if (minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR) {
       result = result.filter(a => a.year !== null && a.year >= minYear && a.year <= maxYear);
     }
-
-    // Genre filter — any or all mode
     if (selGenres.size > 0) {
       if (genreMode === 'all') {
         result = result.filter(a => Array.from(selGenres).every(g => a.genres?.includes(g)));
@@ -174,16 +180,15 @@ export default function Home() {
         result = result.filter(a => a.genres?.some(g => selGenres.has(g)));
       }
     }
-
-    // Rating filter
     if (minRating > 0) {
       result = result.filter(a => a.avg_rating >= minRating);
     }
-
+    if (user && excludeHeard && heard.size > 0) {
+      result = result.filter(a => !heard.has(a.rym_rank));
+    }
     return result;
-  }, [minYear, maxYear, selGenres, minRating, genreMode]);
+  }, [minYear, maxYear, selGenres, minRating, genreMode, user, excludeHeard, heard]);
 
-  // Sync filters to URL
   useEffect(() => {
     const p = new URLSearchParams();
     if (minYear !== ABSOLUTE_MIN_YEAR) p.set('minYear', String(minYear));
@@ -228,9 +233,10 @@ export default function Home() {
         setHistIdx(next.length-1);
         return next;
       });
+      addToHistory(picked);
       window.history.replaceState({}, '', `/?album=${picked.rym_rank}`);
     }, 1500);
-  }, [isRolling, pool, histIdx]);
+  }, [isRolling, pool, histIdx, addToHistory]);
 
   const goBack = useCallback(() => {
     if (histIdx > 0) { const i=histIdx-1; setHistIdx(i); setCurrent(history[i]); setCardKey(k=>k+1); }
@@ -271,34 +277,59 @@ export default function Home() {
   }, []);
 
   const hasFilters = minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR || selGenres.size > 0 || minRating > 0;
-  const activeFilterCount = (minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR ? 1 : 0) + (selGenres.size > 0 ? 1 : 0) + (minRating > 0 ? 1 : 0);
+  const activeFilterCount =
+    (minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR ? 1 : 0) +
+    (selGenres.size > 0 ? 1 : 0) +
+    (minRating > 0 ? 1 : 0);
 
   return (
     <main style={{ minHeight:'100vh', background:'var(--bg)' }}>
       <div style={{ maxWidth:'1400px', margin:'0 auto', padding:'0 clamp(16px, 4vw, 48px) 40px' }}>
 
-        <Masthead totalAlbums={allAlbums.length} rolledCount={rolled}/>
+        {/* Header row — masthead + user menu */}
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+          <Masthead totalAlbums={allAlbums.length} rolledCount={rolled}/>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'8px', paddingTop:'24px' }}>
+            <UserMenu
+              user={user}
+              loading={userLoading}
+              onShowDashboard={() => setShowDashboard(true)}
+            />
+            {user && heard.size > 0 && (
+              <button
+                onClick={() => setExcludeHeard(e => !e)}
+                style={{
+                  fontFamily:'var(--font-mono)', fontSize:'10px',
+                  padding:'4px 12px', borderRadius:'99px',
+                  border:`1px solid ${excludeHeard ? 'var(--accent)' : 'var(--border-mid)'}`,
+                  background: excludeHeard ? 'rgba(168,85,247,.1)' : 'transparent',
+                  color: excludeHeard ? 'var(--accent-hi)' : 'var(--text-muted)',
+                  cursor:'pointer', transition:'all .15s',
+                }}
+              >
+                {excludeHeard ? `Hiding ${heard.size} heard` : 'Including heard'}
+              </button>
+            )}
+          </div>
+        </div>
 
         <div className="desktop-grid" style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:'40px', alignItems:'start' }}>
 
           {/* ── Left column ── */}
           <div style={{ position:'sticky', top:'24px', maxHeight:'calc(100vh - 48px)', overflowY:'auto', paddingRight:'4px' }}>
 
-            {/* Search */}
             <SearchBar
               allAlbums={allAlbums}
               onSelectAlbum={album => { setCurrent(album); setModalAlbum(album); setCardKey(k=>k+1); }}
               onRollFromResults={albums => roll(albums)}
             />
 
-            {/* Year range */}
             <YearRangeFilter
               minYear={minYear}
               maxYear={maxYear}
               onChange={(min, max) => { setMinYear(min); setMaxYear(max); }}
             />
 
-            {/* Rating filter */}
             <RatingFilter minRating={minRating} onChange={setMinRating}/>
 
             {/* Genre filter */}
@@ -319,7 +350,6 @@ export default function Home() {
                   )}
                 </span>
                 <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                  {/* Any / All toggle */}
                   {selGenres.size > 1 && (
                     <button
                       onClick={() => setGenreMode(m => m === 'any' ? 'all' : 'any')}
@@ -331,7 +361,6 @@ export default function Home() {
                         color: genreMode === 'all' ? 'var(--accent-hi)' : 'var(--text-muted)',
                         cursor:'pointer',
                       }}
-                      title={genreMode === 'any' ? 'Currently: albums with ANY selected genre. Click for ALL.' : 'Currently: albums with ALL selected genres. Click for ANY.'}
                     >
                       {genreMode === 'any' ? 'ANY' : 'ALL'}
                     </button>
@@ -349,7 +378,6 @@ export default function Home() {
                 {GENRE_FAMILIES.map(family => {
                   const isOpen      = openFamily === family.label;
                   const activeCount = family.genres.filter(g => selGenres.has(g)).length;
-
                   return (
                     <div key={family.label}>
                       <div
@@ -465,7 +493,15 @@ export default function Home() {
 
             {current && !isRolling && (
               <div key={cardKey} onClick={() => setModalAlbum(current)} style={{ cursor:'pointer' }}>
-                <AlbumCard album={current} isNew/>
+                <AlbumCard
+                  album={current}
+                  isNew
+                  isHeard={heard.has(current.rym_rank)}
+                  isFavorite={favorites.has(current.rym_rank)}
+                  isLoggedIn={!!user}
+                  onMarkHeard={() => markHeard(current)}
+                  onToggleFavorite={() => toggleFavorite(current)}
+                />
               </div>
             )}
 
@@ -503,6 +539,16 @@ export default function Home() {
           album={modalAlbum}
           allAlbums={allAlbums}
           onClose={() => { setModalAlbum(null); window.history.replaceState({}, '', '/'); }}
+        />
+      )}
+
+      {showDashboard && user && (
+        <StatsDashboard
+          user={user}
+          heardList={heardList}
+          favoritesList={favoritesList}
+          rollHistory={rollHistory}
+          onClose={() => setShowDashboard(false)}
         />
       )}
 
