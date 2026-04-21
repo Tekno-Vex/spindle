@@ -55,10 +55,30 @@ function timeAgo(dateStr: string): string {
 export default function StatsDashboard({ user, heardList, favoritesList, rollHistory, onClose }: Props) {
   const name = user.user_metadata?.full_name || user.email?.split('@')[0] || 'You';
 
-  const SECTIONS = [
-    { title: 'Favorites', items: favoritesList, dateKey: 'favorited_at' as const, emptyMsg: 'No favorites yet — heart an album to save it here' },
-    { title: 'Heard', items: heardList, dateKey: 'heard_at' as const, emptyMsg: 'No heard albums yet — mark albums as heard to exclude them from future rolls' },
-    { title: 'Recent Rolls', items: rollHistory, dateKey: 'rolled_at' as const, emptyMsg: 'No roll history yet — start rolling!' },
+  const SECTIONS: {
+    title: string;
+    items: (HeardEntry | FavoriteEntry | HistoryEntry)[];
+    getDate: (item: HeardEntry | FavoriteEntry | HistoryEntry) => string;
+    emptyMsg: string;
+  }[] = [
+    {
+      title: 'Favorites',
+      items: favoritesList,
+      getDate: item => (item as FavoriteEntry).favorited_at,
+      emptyMsg: 'No favorites yet — heart an album to save it here',
+    },
+    {
+      title: 'Heard',
+      items: heardList,
+      getDate: item => (item as HeardEntry).heard_at,
+      emptyMsg: 'No heard albums yet — mark albums as heard to exclude them from future rolls',
+    },
+    {
+      title: 'Recent Rolls',
+      items: rollHistory,
+      getDate: item => (item as HistoryEntry).rolled_at,
+      emptyMsg: 'No roll history yet — start rolling!',
+    },
   ];
 
   return (
@@ -148,7 +168,7 @@ export default function StatsDashboard({ user, heardList, favoritesList, rollHis
                         {item.album_title}
                       </p>
                       <p style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--text-muted)' }}>
-                        {timeAgo(item[section.dateKey])}
+                        {timeAgo(section.getDate(item))}
                       </p>
                     </div>
                   ))}
