@@ -2,22 +2,24 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import albumsData from '@/data/albums.json';
 import type { Album } from '@/types';
-import Masthead      from '@/components/Masthead';
-import AlbumCard     from '@/components/AlbumCard';
-import RollButton    from '@/components/RollButton';
-import SlotAnimation from '@/components/SlotAnimation';
-import YearTimeline  from '@/components/YearTimeline';
-import AlbumModal    from '@/components/AlbumModal';
+import Masthead        from '@/components/Masthead';
+import AlbumCard       from '@/components/AlbumCard';
+import RollButton      from '@/components/RollButton';
+import SlotAnimation   from '@/components/SlotAnimation';
+import AlbumModal      from '@/components/AlbumModal';
+import YearRangeFilter from '@/components/YearRangeFilter';
+import RatingFilter    from '@/components/RatingFilter';
+import SearchBar       from '@/components/SearchBar';
 
 const allAlbums = albumsData as Album[];
-const yearCounts: Record<number,number> = {};
-allAlbums.forEach(a => { if (a.year) yearCounts[a.year] = (yearCounts[a.year]||0)+1; });
 const allTitles = allAlbums.map(a => a.title);
+
+const ABSOLUTE_MIN_YEAR = 1950;
+const ABSOLUTE_MAX_YEAR = 2026;
 
 const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
   {
-    label: 'Rock',
-    color: '#f472b6',
+    label: 'Rock', color: '#f472b6',
     genres: [
       'Progressive Rock','Art Rock','Psychedelic Rock','Hard Rock','Blues Rock',
       'Alternative Rock','Indie Rock','Post-Rock','Noise Rock','Experimental Rock',
@@ -29,8 +31,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Metal',
-    color: '#ef4444',
+    label: 'Metal', color: '#ef4444',
     genres: [
       'Heavy Metal','Death Metal','Black Metal','Thrash Metal','Doom Metal',
       'Progressive Metal','Technical Death Metal','Avant-Garde Metal',
@@ -42,8 +43,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Hip Hop',
-    color: '#a855f7',
+    label: 'Hip Hop', color: '#a855f7',
     genres: [
       'Conscious Hip Hop','Boom Bap','Jazz Rap','Experimental Hip Hop',
       'Hardcore Hip Hop','Abstract Hip Hop','Instrumental Hip Hop',
@@ -53,8 +53,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Jazz',
-    color: '#f59e0b',
+    label: 'Jazz', color: '#f59e0b',
     genres: [
       'Post-Bop','Avant-Garde Jazz','Jazz Fusion','Jazz-Rock','Hard Bop',
       'Spiritual Jazz','Free Jazz','Modal Jazz','Cool Jazz','Vocal Jazz',
@@ -63,8 +62,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Electronic',
-    color: '#22d3ee',
+    label: 'Electronic', color: '#22d3ee',
     genres: [
       'Ambient','Electronic','Synthpop','IDM','Downtempo','Trip Hop',
       'Progressive Electronic','Electropop','Dark Ambient','Drone',
@@ -75,8 +73,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Classical',
-    color: '#34d399',
+    label: 'Classical', color: '#34d399',
     genres: [
       'Modern Classical','Orchestral Music','Romanticism','Cinematic Classical',
       'Chamber Music','Minimalism','Baroque Music','Impressionism',
@@ -85,8 +82,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Folk & Country',
-    color: '#fb923c',
+    label: 'Folk & Country', color: '#fb923c',
     genres: [
       'Singer-Songwriter','Contemporary Folk','Folk Rock','Psychedelic Folk',
       'Progressive Folk','Avant-Folk','Chamber Folk','Indie Folk',
@@ -95,8 +91,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Soul & R&B',
-    color: '#e879f9',
+    label: 'Soul & R&B', color: '#e879f9',
     genres: [
       'Progressive Soul','Neo-Soul','Smooth Soul','Psychedelic Soul',
       'Pop Soul','Soul','Funk','Jazz-Funk','Rhythm & Blues',
@@ -105,8 +100,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Pop',
-    color: '#60a5fa',
+    label: 'Pop', color: '#60a5fa',
     genres: [
       'Art Pop','Progressive Pop','Pop Rock','Baroque Pop','Psychedelic Pop',
       'Sophisti-Pop','Ambient Pop','Chamber Pop','Indie Pop',
@@ -115,8 +109,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'World & Latin',
-    color: '#4ade80',
+    label: 'World & Latin', color: '#4ade80',
     genres: [
       'MPB','Bossa nova','Samba','Samba-jazz','Latin Jazz',
       'Ethio-Jazz','Afro-Cuban Jazz','Latin Alternative',
@@ -124,8 +117,7 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
     ],
   },
   {
-    label: 'Video Game & Film',
-    color: '#94a3b8',
+    label: 'Video Game & Film', color: '#94a3b8',
     genres: [
       'Video Game Music','Film Score','Television Music',
       'Cinematic Classical','Sequencer & Tracker',
@@ -133,24 +125,74 @@ const GENRE_FAMILIES: { label: string; color: string; genres: string[] }[] = [
   },
 ];
 
+// Read initial filter state from URL
+function getInitialFilters() {
+  if (typeof window === 'undefined') return {
+    minYear: ABSOLUTE_MIN_YEAR, maxYear: ABSOLUTE_MAX_YEAR,
+    genres: new Set<string>(), minRating: 0,
+  };
+  const p = new URLSearchParams(window.location.search);
+  return {
+    minYear:   parseInt(p.get('minYear')  || String(ABSOLUTE_MIN_YEAR)),
+    maxYear:   parseInt(p.get('maxYear')  || String(ABSOLUTE_MAX_YEAR)),
+    genres:    new Set<string>(p.get('genres') ? p.get('genres')!.split(',').filter(Boolean) : []),
+    minRating: parseFloat(p.get('rating') || '0'),
+  };
+}
+
 export default function Home() {
+  const initial = useMemo(() => getInitialFilters(), []);
+
   const [current,     setCurrent]    = useState<Album|null>(null);
   const [isRolling,   setRolling]    = useState(false);
-  const [selYear,     setSelYear]    = useState<number|null>(null);
-  const [selGenres,   setSelGenres]  = useState<Set<string>>(new Set());
+  const [minYear,     setMinYear]    = useState(initial.minYear);
+  const [maxYear,     setMaxYear]    = useState(initial.maxYear);
+  const [selGenres,   setSelGenres]  = useState<Set<string>>(initial.genres);
+  const [minRating,   setMinRating]  = useState(initial.minRating);
   const [history,     setHistory]    = useState<Album[]>([]);
   const [histIdx,     setHistIdx]    = useState(-1);
   const [rolled,      setRolled]     = useState(0);
   const [cardKey,     setCardKey]    = useState(0);
   const [openFamily,  setOpenFamily] = useState<string|null>(null);
   const [modalAlbum,  setModalAlbum] = useState<Album|null>(null);
+  const [genreMode,   setGenreMode]  = useState<'any' | 'all'>('any');
 
+  // Build filtered pool
   const pool = useMemo(() => {
     let result = allAlbums;
-    if (selYear)            result = result.filter(a => a.year === selYear);
-    if (selGenres.size > 0) result = result.filter(a => a.genres?.some(g => selGenres.has(g)));
+
+    // Year range
+    if (minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR) {
+      result = result.filter(a => a.year !== null && a.year >= minYear && a.year <= maxYear);
+    }
+
+    // Genre filter — any or all mode
+    if (selGenres.size > 0) {
+      if (genreMode === 'all') {
+        result = result.filter(a => Array.from(selGenres).every(g => a.genres?.includes(g)));
+      } else {
+        result = result.filter(a => a.genres?.some(g => selGenres.has(g)));
+      }
+    }
+
+    // Rating filter
+    if (minRating > 0) {
+      result = result.filter(a => a.avg_rating >= minRating);
+    }
+
     return result;
-  }, [selYear, selGenres]);
+  }, [minYear, maxYear, selGenres, minRating, genreMode]);
+
+  // Sync filters to URL
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (minYear !== ABSOLUTE_MIN_YEAR) p.set('minYear', String(minYear));
+    if (maxYear !== ABSOLUTE_MAX_YEAR) p.set('maxYear', String(maxYear));
+    if (selGenres.size > 0)            p.set('genres', Array.from(selGenres).join(','));
+    if (minRating > 0)                 p.set('rating', String(minRating));
+    const str = p.toString();
+    window.history.replaceState({}, '', str ? `/?${str}` : '/');
+  }, [minYear, maxYear, selGenres, minRating]);
 
   const toggleGenre = (genre: string) => {
     setSelGenres(prev => {
@@ -164,13 +206,19 @@ export default function Home() {
     setSelGenres(new Set(family.genres));
   };
 
-  const clearAllFilters = () => { setSelYear(null); setSelGenres(new Set()); };
+  const clearAllFilters = () => {
+    setMinYear(ABSOLUTE_MIN_YEAR);
+    setMaxYear(ABSOLUTE_MAX_YEAR);
+    setSelGenres(new Set());
+    setMinRating(0);
+  };
 
-  const roll = useCallback(() => {
-    if (isRolling || !pool.length) return;
+  const roll = useCallback((overridePool?: Album[]) => {
+    const source = overridePool || pool;
+    if (isRolling || !source.length) return;
     setRolling(true); setCurrent(null);
     setTimeout(() => {
-      const picked = pool[Math.floor(Math.random() * pool.length)];
+      const picked = source[Math.floor(Math.random() * source.length)];
       setCurrent(picked);
       setRolling(false);
       setRolled(c => c+1);
@@ -180,7 +228,6 @@ export default function Home() {
         setHistIdx(next.length-1);
         return next;
       });
-      // Update URL for shareability
       window.history.replaceState({}, '', `/?album=${picked.rym_rank}`);
     }, 1500);
   }, [isRolling, pool, histIdx]);
@@ -193,7 +240,6 @@ export default function Home() {
     if (histIdx < history.length-1) { const i=histIdx+1; setHistIdx(i); setCurrent(history[i]); setCardKey(k=>k+1); }
   }, [histIdx, history]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
@@ -205,7 +251,6 @@ export default function Home() {
     return () => window.removeEventListener('keydown', fn);
   }, [roll, goBack, goFwd]);
 
-  // Handle similar album clicks from inside the modal
   useEffect(() => {
     const fn = (e: Event) => {
       const album = (e as CustomEvent).detail as Album;
@@ -215,21 +260,18 @@ export default function Home() {
     return () => window.removeEventListener('spindle:openAlbum', fn);
   }, []);
 
-  // Load album from URL on first visit e.g. /?album=42
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rankStr = params.get('album');
     if (rankStr) {
       const rank = parseInt(rankStr);
       const found = allAlbums.find(a => a.rym_rank === rank);
-      if (found) {
-        setCurrent(found);
-        setModalAlbum(found);
-      }
+      if (found) { setCurrent(found); setModalAlbum(found); }
     }
   }, []);
 
-  const hasFilters = selYear !== null || selGenres.size > 0;
+  const hasFilters = minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR || selGenres.size > 0 || minRating > 0;
+  const activeFilterCount = (minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR ? 1 : 0) + (selGenres.size > 0 ? 1 : 0) + (minRating > 0 ? 1 : 0);
 
   return (
     <main style={{ minHeight:'100vh', background:'var(--bg)' }}>
@@ -242,7 +284,22 @@ export default function Home() {
           {/* ── Left column ── */}
           <div style={{ position:'sticky', top:'24px', maxHeight:'calc(100vh - 48px)', overflowY:'auto', paddingRight:'4px' }}>
 
-            <YearTimeline selectedYear={selYear} onYearSelect={setSelYear} yearCounts={yearCounts}/>
+            {/* Search */}
+            <SearchBar
+              allAlbums={allAlbums}
+              onSelectAlbum={album => { setCurrent(album); setModalAlbum(album); setCardKey(k=>k+1); }}
+              onRollFromResults={albums => roll(albums)}
+            />
+
+            {/* Year range */}
+            <YearRangeFilter
+              minYear={minYear}
+              maxYear={maxYear}
+              onChange={(min, max) => { setMinYear(min); setMaxYear(max); }}
+            />
+
+            {/* Rating filter */}
+            <RatingFilter minRating={minRating} onChange={setMinRating}/>
 
             {/* Genre filter */}
             <div style={{
@@ -261,12 +318,31 @@ export default function Home() {
                     </span>
                   )}
                 </span>
-                {selGenres.size > 0 && (
-                  <button onClick={() => setSelGenres(new Set())}
-                    style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-hi)', background:'none', border:'none', cursor:'pointer' }}>
-                    Clear ×
-                  </button>
-                )}
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  {/* Any / All toggle */}
+                  {selGenres.size > 1 && (
+                    <button
+                      onClick={() => setGenreMode(m => m === 'any' ? 'all' : 'any')}
+                      style={{
+                        fontFamily:'var(--font-mono)', fontSize:'9px',
+                        padding:'2px 8px', borderRadius:'99px',
+                        border:'1px solid var(--border-mid)',
+                        background: genreMode === 'all' ? 'rgba(168,85,247,.12)' : 'transparent',
+                        color: genreMode === 'all' ? 'var(--accent-hi)' : 'var(--text-muted)',
+                        cursor:'pointer',
+                      }}
+                      title={genreMode === 'any' ? 'Currently: albums with ANY selected genre. Click for ALL.' : 'Currently: albums with ALL selected genres. Click for ANY.'}
+                    >
+                      {genreMode === 'any' ? 'ANY' : 'ALL'}
+                    </button>
+                  )}
+                  {selGenres.size > 0 && (
+                    <button onClick={() => setSelGenres(new Set())}
+                      style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-hi)', background:'none', border:'none', cursor:'pointer' }}>
+                      Clear ×
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
@@ -283,36 +359,23 @@ export default function Home() {
                           justifyContent:'space-between',
                           padding:'8px 12px', borderRadius:'10px',
                           border:`1px solid ${activeCount > 0 ? family.color : isOpen ? 'var(--border-hi)' : 'var(--border-mid)'}`,
-                          background: activeCount > 0
-                            ? `${family.color}15`
-                            : isOpen ? 'var(--bg-surface)' : 'transparent',
+                          background: activeCount > 0 ? `${family.color}15` : isOpen ? 'var(--bg-surface)' : 'transparent',
                           cursor:'pointer', transition:'all .15s',
                         }}
                       >
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                           <div style={{ width:'7px', height:'7px', borderRadius:'50%', background: family.color, flexShrink:0 }}/>
-                          <span style={{
-                            fontFamily:'var(--font-mono)', fontSize:'11px',
-                            color: activeCount > 0 ? family.color : isOpen ? 'var(--text)' : 'var(--text-sub)',
-                            letterSpacing:'.04em',
-                          }}>
+                          <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color: activeCount > 0 ? family.color : isOpen ? 'var(--text)' : 'var(--text-sub)', letterSpacing:'.04em' }}>
                             {family.label}
                           </span>
                         </div>
                         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                           {activeCount > 0 && (
-                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color: family.color }}>
-                              {activeCount}
-                            </span>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color: family.color }}>{activeCount}</span>
                           )}
                           <button
                             onClick={e => { e.stopPropagation(); selectFamily(family); }}
-                            style={{
-                              fontFamily:'var(--font-mono)', fontSize:'9px',
-                              color:'var(--text-muted)', background:'none',
-                              border:'1px solid var(--border)', borderRadius:'4px',
-                              padding:'2px 6px', cursor:'pointer',
-                            }}
+                            style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'var(--text-muted)', background:'none', border:'1px solid var(--border)', borderRadius:'4px', padding:'2px 6px', cursor:'pointer' }}
                           >
                             all
                           </button>
@@ -321,10 +384,7 @@ export default function Home() {
                       </div>
 
                       {isOpen && (
-                        <div className="anim-up" style={{
-                          display:'flex', flexWrap:'wrap', gap:'4px',
-                          padding:'8px 10px 4px',
-                        }}>
+                        <div className="anim-up" style={{ display:'flex', flexWrap:'wrap', gap:'4px', padding:'8px 10px 4px' }}>
                           {family.genres.map(genre => (
                             <button
                               key={genre}
@@ -358,12 +418,20 @@ export default function Home() {
               }}>
                 <div style={{ marginBottom:'4px', fontWeight:600 }}>
                   ✦ {pool.length.toLocaleString()} albums in pool
+                  <span style={{ marginLeft:'8px', background:'var(--accent)', color:'white', borderRadius:'99px', padding:'1px 8px', fontSize:'10px' }}>
+                    {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+                  </span>
                 </div>
-                {selYear && <div style={{ opacity:.7, fontSize:'11px' }}>Year: {selYear}</div>}
+                {(minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR) && (
+                  <div style={{ opacity:.7, fontSize:'11px' }}>Years: {minYear}–{maxYear}</div>
+                )}
                 {selGenres.size > 0 && (
                   <div style={{ opacity:.7, fontSize:'11px', marginTop:'2px' }}>
-                    {selGenres.size} genre{selGenres.size > 1 ? 's' : ''} selected
+                    {selGenres.size} genre{selGenres.size > 1 ? 's' : ''} · {genreMode === 'all' ? 'intersection' : 'any match'}
                   </div>
+                )}
+                {minRating > 0 && (
+                  <div style={{ opacity:.7, fontSize:'11px', marginTop:'2px' }}>Rating: {minRating}+</div>
                 )}
                 <button onClick={clearAllFilters}
                   style={{ marginTop:'8px', fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-muted)', background:'none', border:'none', cursor:'pointer', padding:0 }}>
@@ -372,7 +440,7 @@ export default function Home() {
               </div>
             )}
 
-            <RollButton onClick={roll} isRolling={isRolling} poolSize={pool.length}/>
+            <RollButton onClick={() => roll()} isRolling={isRolling} poolSize={pool.length}/>
 
             {history.length > 1 && (
               <div className="anim-up" style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'12px', marginTop:'12px' }}>
@@ -396,11 +464,7 @@ export default function Home() {
             <SlotAnimation isRolling={isRolling} albumTitles={allTitles}/>
 
             {current && !isRolling && (
-              <div
-                key={cardKey}
-                onClick={() => setModalAlbum(current)}
-                style={{ cursor:'pointer' }}
-              >
+              <div key={cardKey} onClick={() => setModalAlbum(current)} style={{ cursor:'pointer' }}>
                 <AlbumCard album={current} isNew/>
               </div>
             )}
@@ -434,15 +498,11 @@ export default function Home() {
 
       </div>
 
-      {/* Album detail modal */}
       {modalAlbum && (
         <AlbumModal
           album={modalAlbum}
           allAlbums={allAlbums}
-          onClose={() => {
-            setModalAlbum(null);
-            window.history.replaceState({}, '', '/');
-          }}
+          onClose={() => { setModalAlbum(null); window.history.replaceState({}, '', '/'); }}
         />
       )}
 
