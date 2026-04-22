@@ -104,7 +104,12 @@ export default function UserMenu({ user, loading, onShowDashboard }: Props) {
 
           <form action="/auth/signout" method="post">
             <button
-              type="submit"
+              onClick={async () => {
+                const { createClient } = await import('@/lib/supabase/client');
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                window.location.href = '/';
+              }}
               style={{
                 width: '100%', padding: '11px 16px', textAlign: 'left',
                 background: 'none', border: 'none', cursor: 'pointer',
