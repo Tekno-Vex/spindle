@@ -120,22 +120,32 @@ export function useUserData(user: User | null) {
   }, [user, favorites]);
 
   const addToHistory = useCallback(async (album: Album) => {
+    // Write to public feed (no auth needed)
+    const anonSupabase = createClient();
+    await anonSupabase.from('public_feed').insert({
+      album_rank:   album.rym_rank,
+      album_title:  album.title,
+      album_artist: album.artist,
+      cover_url:    album.cover_url || '',
+    });
+
+    // Write to personal history if logged in
     if (!user) return;
     await supabase.from('roll_history').insert({
-      user_id: user.id,
-      album_rank: album.rym_rank,
-      album_title: album.title,
+      user_id:      user.id,
+      album_rank:   album.rym_rank,
+      album_title:  album.title,
       album_artist: album.artist,
-      cover_url: album.cover_url || '',
+      cover_url:    album.cover_url || '',
     });
     setRollHistory(prev => [{
-      album_rank: album.rym_rank,
-      album_title: album.title,
+      album_rank:   album.rym_rank,
+      album_title:  album.title,
       album_artist: album.artist,
-      cover_url: album.cover_url || '',
-      rolled_at: new Date().toISOString(),
+      cover_url:    album.cover_url || '',
+      rolled_at:    new Date().toISOString(),
     }, ...prev].slice(0, 20));
-  }, [user]);
+  }, [user, supabase]);
 
   return {
     heard, favorites, heardList, favoritesList, rollHistory,

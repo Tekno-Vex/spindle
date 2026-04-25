@@ -18,6 +18,7 @@ import VersusMode      from '@/components/VersusMode';
 import DecadeSafari    from '@/components/DecadeSafari';
 import { useUser }     from '@/hooks/useUser';
 import { useUserData } from '@/hooks/useUserData';
+import LiveFeed        from '@/components/LiveFeed';
 
 const allAlbums = albumsData as Album[];
 const allTitles = allAlbums.map(a => a.title);
@@ -78,6 +79,7 @@ export default function Home() {
   const [versusA,       setVersusA]      = useState<Album|null>(null);
   const [versusB,       setVersusB]      = useState<Album|null>(null);
   const [blindScore, setBlindScore] = useState({ points: 0, total: 0, streak: 0 });
+  const [showFeed,      setShowFeed]     = useState(false);
 
   const { user, loading: userLoading } = useUser();
   const { heard, favorites, heardList, favoritesList, rollHistory, markHeard, toggleFavorite, addToHistory } = useUserData(user);
@@ -415,13 +417,47 @@ export default function Home() {
           <div>{renderRightColumn()}</div>
         </div>
 
-        <footer style={{ marginTop:'40px', paddingTop:'20px', borderTop:'1px solid var(--border)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-          <p style={{ fontFamily:'var(--font-mono)', fontSize:'11px', letterSpacing:'.14em', textTransform:'uppercase', color:'var(--text-muted)' }}>
-            Spindle · {allAlbums.length.toLocaleString()} Albums · Rate Your Music
-          </p>
-          <p style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-muted)', opacity:.5 }}>
-            ← → history · Space to roll
-          </p>
+        <footer style={{ marginTop:'40px', paddingTop:'20px', borderTop:'1px solid var(--border)' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: showFeed ? '16px' : '0' }}>
+            <p style={{ fontFamily:'var(--font-mono)', fontSize:'11px', letterSpacing:'.14em', textTransform:'uppercase', color:'var(--text-muted)' }}>
+              Spindle · {allAlbums.length.toLocaleString()} Albums · Rate Your Music
+            </p>
+            <div style={{ display:'flex', gap:'12px', alignItems:'center' }}>
+              <button
+                onClick={() => setShowFeed(s => !s)}
+                className={`pill ${showFeed ? 'active' : ''}`}
+                style={{ cursor:'pointer', fontSize:'11px', display:'flex', alignItems:'center', gap:'6px' }}
+              >
+                <span style={{ width:'6px', height:'6px', borderRadius:'50%', background: showFeed ? 'var(--accent)' : '#34d399', display:'inline-block', animation: showFeed ? 'none' : 'glowPulse 2s ease-in-out infinite' }}/>
+                Live Feed
+              </button>
+              <p style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-muted)', opacity:.5 }}>
+                ← → history · Space to roll
+              </p>
+            </div>
+          </div>
+
+          {showFeed && (
+            <div className="anim-up" style={{ background:'var(--bg-card)', border:'1px solid var(--border-mid)', borderRadius:'16px', overflow:'hidden' }}>
+              <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <span style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#34d399', display:'inline-block' }}/>
+                  <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', letterSpacing:'.14em', textTransform:'uppercase', color:'var(--text-muted)' }}>
+                    Community Live Feed
+                  </span>
+                </div>
+                <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)' }}>
+                  Last 50 rolls · Updates in real-time
+                </span>
+              </div>
+              <LiveFeed
+                onSelectAlbum={rank => {
+                  const found = allAlbums.find(a => a.rym_rank === rank);
+                  if (found) { setCurrent(found); setModalAlbum(found); setCardKey(k=>k+1); }
+                }}
+              />
+            </div>
+          )}
         </footer>
       </div>
 

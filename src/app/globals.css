@@ -51,6 +51,10 @@ body {
   50%      { transform:translate(-50%,-50%) scale(1.15); opacity:.5; }
 }
 @keyframes spin { to { transform:rotate(360deg); } }
+@keyframes glowPulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px #34d399; }
+  50%       { opacity: .5; box-shadow: 0 0 8px #34d399; }
+}
 
 .anim-card { animation: cardIn  .7s cubic-bezier(.16,1,.3,1) both; }
 .anim-up   { animation: fadeUp  .5s cubic-bezier(.16,1,.3,1) both; }

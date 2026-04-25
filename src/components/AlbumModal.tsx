@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import type { Album } from '@/types';
+import AlbumSchema from './AlbumSchema';
 
 function proxyUrl(url: string): string {
   if (!url) return '';
@@ -209,6 +210,8 @@ export default function AlbumModal({ album, allAlbums, onClose }: Props) {
             position:'relative',
           }}
         >
+          <AlbumSchema album={album} />
+          
           {/* Close */}
           <button
             onClick={onClose}
