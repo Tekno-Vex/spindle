@@ -19,6 +19,8 @@ import DecadeSafari    from '@/components/DecadeSafari';
 import { useUser }     from '@/hooks/useUser';
 import { useUserData } from '@/hooks/useUserData';
 import LiveFeed        from '@/components/LiveFeed';
+import OnboardingTour from '@/components/OnboardingTour';
+import { track } from '@vercel/analytics';
 
 const allAlbums = albumsData as Album[];
 const allTitles = allAlbums.map(a => a.title);
@@ -116,7 +118,7 @@ export default function Home() {
   const toggleGenre = (genre: string) => {
     setSelGenres(prev => { const next = new Set(prev); next.has(genre) ? next.delete(genre) : next.add(genre); return next; });
   };
-  const selectFamily = (family: typeof GENRE_FAMILIES[0]) => { setSelGenres(new Set(family.genres)); };
+  const selectFamily = (family: typeof GENRE_FAMILIES[0]) => { track('genre_filter', { family: family.label }); setSelGenres(new Set(family.genres)); };
   const clearAllFilters = () => { setMinYear(ABSOLUTE_MIN_YEAR); setMaxYear(ABSOLUTE_MAX_YEAR); setSelGenres(new Set()); setMinRating(0); };
 
   const pickRandom = useCallback((source: Album[]): Album => {
@@ -126,6 +128,8 @@ export default function Home() {
   const roll = useCallback((overridePool?: Album[]) => {
     const source = overridePool || pool;
     if (isRolling || !source.length) return;
+
+    track('roll', { mode: activeMode, poolSize: pool.length });
 
     if (activeMode === 'blind') {
       const picked = pickRandom(source);
@@ -165,6 +169,7 @@ export default function Home() {
   }, [isRolling, pool, histIdx, addToHistory, activeMode, pickRandom]);
 
   const handleModeChange = (mode: Mode) => {
+    track('mode_change', { mode });
     setActiveMode(mode);
     setCurrent(null);
     setBlindAlbum(null);
@@ -271,7 +276,7 @@ export default function Home() {
       <div>
         <SlotAnimation isRolling={isRolling} albumTitles={allTitles}/>
         {current && !isRolling && (
-          <div key={cardKey} onClick={() => setModalAlbum(current)} style={{ cursor: 'pointer' }}>
+          <div key={cardKey} onClick={() => setModalAlbum(current)} style={{ cursor: 'pointer' }} className="album-card-hover">
             <AlbumCard
               album={current} isNew
               isHeard={heard.has(current.rym_rank)}
@@ -283,14 +288,60 @@ export default function Home() {
           </div>
         )}
         {!current && !isRolling && (
-          <EmptyState message="Press Roll or hit Space to begin"/>
-        )}
+        <div style={{
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          minHeight:'calc(100vh - 200px)', borderRadius:'24px',
+          border:'1px dashed var(--border-mid)', background:'var(--bg-card)',
+          padding:'40px',
+        }}>
+          <div style={{ fontSize:'72px', opacity:.08, marginBottom:'24px' }}>◎</div>
+          {pool.length === 0 ? (
+            <>
+              <p style={{ fontFamily:'var(--font-playfair)', fontSize:'24px', color:'var(--text-sub)', marginBottom:'12px', textAlign:'center' }}>
+                No albums match your filters
+              </p>
+              <p style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'var(--text-muted)', marginBottom:'24px', textAlign:'center', maxWidth:'320px' }}>
+                Your current combination of filters returned zero results. Try relaxing some:
+              </p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px', width:'100%', maxWidth:'280px' }}>
+                {minRating > 0 && (
+                  <button onClick={() => setMinRating(0)} className="pill" style={{ cursor:'pointer', justifyContent:'center', fontSize:'12px', padding:'8px 16px' }}>
+                    Remove rating filter ({minRating}+) →
+                  </button>
+                )}
+                {selGenres.size > 0 && (
+                  <button onClick={() => setSelGenres(new Set())} className="pill" style={{ cursor:'pointer', justifyContent:'center', fontSize:'12px', padding:'8px 16px' }}>
+                    Clear {selGenres.size} genre{selGenres.size > 1 ? 's' : ''} →
+                  </button>
+                )}
+                {(minYear !== ABSOLUTE_MIN_YEAR || maxYear !== ABSOLUTE_MAX_YEAR) && (
+                  <button onClick={() => { setMinYear(ABSOLUTE_MIN_YEAR); setMaxYear(ABSOLUTE_MAX_YEAR); }} className="pill" style={{ cursor:'pointer', justifyContent:'center', fontSize:'12px', padding:'8px 16px' }}>
+                    Reset year range →
+                  </button>
+                )}
+                <button onClick={clearAllFilters} className="pill active" style={{ cursor:'pointer', justifyContent:'center', fontSize:'12px', padding:'8px 16px' }}>
+                  Clear all filters →
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ fontFamily:'var(--font-playfair)', fontSize:'28px', color:'var(--text-sub)', marginBottom:'12px', textAlign:'center' }}>
+                Your next favourite album is waiting
+              </p>
+              <p style={{ fontFamily:'var(--font-mono)', fontSize:'12px', color:'var(--text-muted)', letterSpacing:'.1em', textTransform:'uppercase' }}>
+                Press Roll or hit Space to begin
+              </p>
+            </>
+          )}
+        </div>
+      )}
       </div>
     );
   };
 
   return (
-    <main style={{ minHeight:'100vh', background:'var(--bg)' }}>
+    <main id="main-content" style={{ minHeight:'100vh', background:'var(--bg)' }}>
       <div style={{ maxWidth:'1400px', margin:'0 auto', padding:'0 clamp(16px, 4vw, 48px) 40px' }}>
 
         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
@@ -478,6 +529,7 @@ export default function Home() {
           onClose={() => setShowDashboard(false)}
         />
       )}
+      <OnboardingTour/>
     </main>
   );
 }

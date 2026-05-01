@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Playfair_Display, JetBrains_Mono, Inter } from 'next/font/google';
 import './globals.css';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { Analytics } from '@vercel/analytics/react';
 
 const playfair  = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' });
 const jetbrains = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
@@ -43,7 +45,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${playfair.variable} ${jetbrains.variable} ${inter.variable}`}>
-      <body>{children}</body>
+      <body>
+        <a href="#main-content" className="skip-link">Skip to main content</a>
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+        <Analytics/>
+      </body>
     </html>
   );
 }

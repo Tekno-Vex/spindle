@@ -11,6 +11,7 @@ export default function RollButton({ onClick, isRolling, poolSize }: {
       <button
         onClick={onClick}
         disabled={disabled}
+        className={isRolling ? 'roll-loading' : ''}
         style={{
           fontFamily:'var(--font-playfair)',
           fontWeight:700,
