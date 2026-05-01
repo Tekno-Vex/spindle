@@ -17,13 +17,26 @@ A music discovery app that randomly serves albums from the Rate Your Music all-t
 - **User accounts** — sign in with Google to track heard albums, favorites, and roll history
 - **Live Feed** — see what albums other users are discovering in real-time
 
+### Also built in
+
+- **Search** — find albums by artist or title, open them directly, or roll randomly within matching results
+- **Shareable state** — filters and mode are kept in the URL query string; opening `?album=<RYM rank>` loads that album’s detail view for sharing
+- **Keyboard** — Space rolls (when not typing in a field); arrow keys step through your roll history in standard mode
+- **Genre logic** — with multiple genres selected, switch between *any* match and *all* match (intersection); genre families can select every tag in a family at once
+- **Heard albums** — when signed in, optionally remove albums you have already marked heard from the random pool (toggle in the header)
+- **Standard roll UX** — short slot-style title animation before the picked album appears
+- **Onboarding** — a short first-visit tour (stored in the browser so it does not repeat)
+- **Theme** — dark / light toggle in the masthead, with preference saved locally
+- **Product & sharing** — [Vercel Analytics](https://vercel.com/analytics) for usage events; Open Graph images via `/api/og` for link previews
+- **Resilience** — skip-to-content link, React error boundary, and accessible metadata in the root layout
+
 ---
 
 ## Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) + TypeScript |
+| Framework | Next.js 16 (App Router) + TypeScript |
 | Styling | Tailwind CSS + CSS variables |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth (Google OAuth) |
